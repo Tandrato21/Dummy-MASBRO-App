@@ -7,6 +7,7 @@ import android.os.Bundle;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -50,6 +51,7 @@ import com.taufiqskripsiapp.masbro.ViewModel.ProfileViewModel;
 import com.taufiqskripsiapp.masbro.ViewModel.SharedViewModel;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class SearchFragment extends Fragment {
@@ -97,7 +99,6 @@ public class SearchFragment extends Fragment {
         List<Produk> produkList = new ArrayList<>();
         ProductAdapter productAdapter = new ProductAdapter(produkList);
         recyclerView.setAdapter(productAdapter);
-
         produkRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -120,8 +121,7 @@ public class SearchFragment extends Fragment {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 for (DataSnapshot produkSnapshot : snapshot.getChildren()){
-                    String key = produkSnapshot.getKey();  // Ini adalah gabungan dari barcode dan nama produk
-                    Log.d("DEBUG", "onDataChange: key = " + key);
+                    String key = produkSnapshot.getKey();
                     allKeys.add(key);
                 }
             }
@@ -131,6 +131,7 @@ public class SearchFragment extends Fragment {
                 // Handle error
             }
         });
+
 
 
         profileViewModel.getisAdminLiveData().observe(getViewLifecycleOwner(), admin -> {
@@ -231,6 +232,7 @@ public class SearchFragment extends Fragment {
         produkRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                HashMap<String, Object> dataMap = new HashMap<>();
                 Integer hargaFiktif = snapshot.child("harga").child("tokoFiktif").getValue(Integer.class);
                 Integer hargaNoari = snapshot.child("harga").child("tokoNoari").getValue(Integer.class);
                 Boolean ketersediaanFiktif = snapshot.child("ketersediaan").child("tokoFiktif").getValue(Boolean.class);
@@ -243,13 +245,28 @@ public class SearchFragment extends Fragment {
                 String kategori = snapshot.child("kategori").getValue(String.class);
                 String uri = snapshot.child("gambar").getValue(String.class);
 
+//                dataMap.put("hargaFiktif", hargaFiktif);
+//                dataMap.put("hargaNoari", hargaNoari);
+//                dataMap.put("ketersediaanFiktif", ketersediaanFiktif);
+//                dataMap.put("ketersediaanNoari", ketersediaanNoari);
+                dataMap.put("namaProduk", namaProduk);
+                dataMap.put("merek", merek);
+                dataMap.put("barcode", barcode);
+                dataMap.put("kemasan", kemasan);
+                dataMap.put("kategori",kategori);
+                dataMap.put("uri", uri);
+
                 if(superAdmin){
                     if(hargaFiktif == null || !ketersediaanFiktif){
-                        barcodeDetectDataProdukInputDialog(keyCocok, namaProduk, merek, barcode, kemasan, kategori, uri);
+                        dataMap.put("hargaNoari", hargaNoari);
+                        dataMap.put("ketersediaanNoari", ketersediaanNoari);
+                        appSharedViewModel.setProdukDataMap("productData", dataMap);
                     } else if (hargaFiktif != null || ketersediaanFiktif){
                         Toast.makeText(getContext(), "Data Sudah Ada", Toast.LENGTH_SHORT).show();
                     } else if (hargaNoari == null || !ketersediaanNoari){
-                        barcodeDetectDataProdukInputDialog(keyCocok, namaProduk, merek, barcode, kemasan, kategori, uri);
+                        dataMap.put("hargaFiktif", hargaFiktif);
+                        dataMap.put("ketersediaanFiktif", ketersediaanFiktif);
+                        appSharedViewModel.setProdukDataMap("productData", dataMap);
                     } else {
                         Toast.makeText(getContext(), "Data Sudah Ada", Toast.LENGTH_SHORT).show();
                     }
@@ -272,6 +289,18 @@ public class SearchFragment extends Fragment {
 
                     }
                 }
+
+                appSharedViewModel.getProdukDataMap().observe(getViewLifecycleOwner(), new Observer<HashMap<String, Object>>() {
+                    @Override
+                    public void onChanged(HashMap<String, Object> dataMap) {
+                        HashMap<String, Object> productData = (HashMap<String, Object>) dataMap.get("productData");
+                        if (productData != null) {
+                            String namaProduk = (String) productData.get("namaProduk");
+                            Log.d("DEBUG", "onChanged: (kode untuk mengakses appsharedviewmodel) namaProduk " + namaProduk);
+                        }
+                    }
+                });
+
             }
 
             @Override
